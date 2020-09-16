@@ -1,4 +1,5 @@
 #Loading packages 
+library("readxl")
 library("forecast")
 library("tseries")
 
@@ -16,31 +17,41 @@ tseries <- ts(df$`Nye tilfeller`,
         start = c(2020, as.numeric(format(inds[1], "%j"))),
         frequency = 365)
 
-plot.ts(tseries, ylab="New cases")
+plot.ts(tseries, ylab="New cases", type="o")
 summary(tseries)
 
 #ACF
-acf(tseries, main="ACF") #values are correlated 
+acf(tseries, main="") #values are correlated 
 
 #Transforming the time series
-##Differencing
-diff_t <- diff(tseries)
-plot.ts(diff_t)
+
 ##Box-Cox
-lambda <- BoxCox.lambda(diff_t) #hvorfor gir denne lambda=1? Med en mindre lambda blir jo variansen borte? 
-tseries_fit <- BoxCox(diff_t,lambda=0.2)
-plot.ts(tseries_fit)
-abline(h=mean(tseries_fit), col="red")
+lambda <- BoxCox.lambda(tseries) #hvorfor gir denne lambda=1? Med en mindre lambda blir jo variansen borte? 
+tseries_BC <- BoxCox(tseries,lambda=0.5) 
+plot.ts(tseries_BC,type="o")
 
-acf(tseries_fit) 
-pacf(tseries_fit)
+##Differencing
+diff_t <- diff(tseries_BC)
+plot.ts(diff_t,type="o")
+abline(h=mean(diff_t), col="red")
 
-#Different tests 
-Box.test(tseries_fit, lag=1, type="Ljung-Box")
-tseries::adf.test(tseries_fit) #-> stationary
-Box.test(tseries, lag=1, type="Ljung-Box")
-tseries::adf.test(tseries) #-> non stationary
+#ACF and PACF of transformed data
+acf(diff_t,main="") #MA(0), MA(1) or MA(2)
+pacf(diff_t,main="") #AR(1) or AR(2)
 
+#Augmented Dickey-Fuller Test
+tseries::adf.test(diff_t, k=0) #-> stationary
 
+#ARIMA-model - ikke riktig 
+arima <- arima(tseries_BC, order=c(1,1,2))
+plot.ts(arima$residuals)
+forecast <- forecast::forecast(arima, h=30)
+inv.forecast <- InvBoxCox(forecast$mean,lambda=0.5)
+inv.upper <- InvBoxCox(forecast$upper, lambda = 0.5)[,2]
+inv.lower <- InvBoxCox(forecast$lower, lambda = 0.5)[,2]
+d=seq(1,30)
+plot(d,inv.forecast, type="o", ylim=range(50,20), xlab="Days after 21.02.2020")
+lines(d,inv.upper,col="red")
+lines(d,inv.lower, col="red")
 
 
