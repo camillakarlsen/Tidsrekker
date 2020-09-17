@@ -12,10 +12,10 @@ plot(df$Dato, df$`Kumulativt antall`, type="l", xlab="Date", ylab= "Cumulative c
 plot(df$Dato, df$`Nye tilfeller`, type="o", xlab="Date", ylab= "New cases")
 
 ## Create a time series object
-inds <- seq(df$Dato[1], df$Dato[196], by = "day")
+dayofYear <- (df$Dato[1] - as.Date("2020-01-01") + 1)
 tseries <- ts(df$`Nye tilfeller`,
-        start = c(2020, as.numeric(format(inds[1], "%j"))),
-        frequency = 365)
+              start = c(2020, dayofYear),
+              frequency = 365)
 
 plot.ts(tseries, ylab="New cases", type="o")
 summary(tseries)
@@ -35,16 +35,29 @@ diff_t <- diff(tseries_BC)
 plot.ts(diff_t,type="o")
 abline(h=mean(diff_t), col="red")
 
+forecast::ndiffs(tseries_BC, test = "kpss") #Finds the number of differences needed using the KPSS test 
+
 #ACF and PACF of transformed data
-acf(diff_t,main="") #MA(0), MA(1) or MA(2)
-pacf(diff_t,main="") #AR(1) or AR(2)
+acf(diff_t,main="") #MA(1) or MA(2) 
+pacf(diff_t,main="") #AR(1) or AR(2) #Lag 0 er ikke med her, første er lag 1
 
 #Augmented Dickey-Fuller Test
 tseries::adf.test(diff_t, k=0) #-> stationary
 
-#ARIMA-model - ikke riktig 
-arima <- arima(tseries_BC, order=c(1,1,2))
+#ARIMA-model
+arima <- Arima(tseries_BC, order=c(2,1,2))
+arima
 plot.ts(arima$residuals)
+fit <- auto.arima(tseries_BC, ic="aicc",start.p = 0, max.p = 2, start.q = 0, max.q = 2, trace=TRUE)
+fit
+
+#Check the residuals 
+res <- fit$residuals
+plot.ts(res)
+Box.test(res, type = "Ljung-Box", lag=10, fitdf = 4) #hva skal lag være?
+checkresiduals(res) #ACF er rar - seasonal? 
+
+#Forecast next 30 days - usikker på hvordan vi skal gjøre dette enda
 forecast <- forecast::forecast(arima, h=30)
 inv.forecast <- InvBoxCox(forecast$mean,lambda=0.5)
 inv.upper <- InvBoxCox(forecast$upper, lambda = 0.5)[,2]
