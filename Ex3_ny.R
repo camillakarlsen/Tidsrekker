@@ -24,47 +24,71 @@ summary(tseries)
 acf(tseries, main="") #values are correlated 
 
 #Transforming the time series
-
 ##Box-Cox
-lambda <- BoxCox.lambda(tseries) #hvorfor gir denne lambda=1? Med en mindre lambda blir jo variansen borte? 
-tseries_BC <- BoxCox(tseries,lambda=0.5) 
-plot.ts(tseries_BC,type="o")
+lambda <- BoxCox.lambda(tseries[1:196])
+boxcox_fit <- BoxCox(tseries,lambda=lambda) 
+plot.ts(boxcox_fit,type="l")
+abline(h=mean(boxcox_fit), col="red")
 
-##Differencing
-diff_t <- diff(tseries_BC)
-plot.ts(diff_t,type="o")
-abline(h=mean(diff_t), col="red")
+##Differencing 
+forecast::ndiffs(boxcox_fit, test = "kpss")  #Finds the number of differences needed  
+transformed <- diff(boxcox_fit)
+plot.ts(transformed,type="l")
+abline(h=mean(transformed), col="red")
 
-forecast::ndiffs(tseries_BC, test = "kpss") #Finds the number of differences needed using the KPSS test 
-
-#ACF and PACF of transformed data
-acf(diff_t,main="") #MA(1) or MA(2) 
-pacf(diff_t,main="") #AR(1) or AR(2) #Lag 0 er ikke med her, første er lag 1
+#ACF and PACF of BoxCox transformed data
+acf(boxcox_fit,main="") 
+pacf(boxcox_fit,main="") #AR(1) or AR(2) #Lag 0 er ikke med her, første er lag 1
 
 #Augmented Dickey-Fuller Test
-tseries::adf.test(diff_t, k=0) #-> stationary
+tseries::adf.test(transformed, k=0) #-> stationary
+kpss.test(transformed, null="Trend") #-> Stationary
 
-#ARIMA-model
-arima <- Arima(tseries_BC, order=c(2,1,2))
-arima
-plot.ts(arima$residuals)
-fit <- auto.arima(tseries_BC, ic="aicc",start.p = 0, max.p = 2, start.q = 0, max.q = 2, trace=TRUE)
-fit
+#ARIMA-model and checking the residuals for each model
+fit <- auto.arima(boxcox_fit, ic="aicc", trace=TRUE, d=1)
+fit # ARIMA(2,1,3) AIC=733,14 
+checkresiduals(fit$residuals, test="FALSE")
+Box.test(fit$residuals, type = "Ljung-Box", lag=10, fitdf = 2)
 
-#Check the residuals 
-res <- fit$residuals
-plot.ts(res)
-Box.test(res, type = "Ljung-Box", lag=10, fitdf = 4) #hva skal lag være?
-checkresiduals(res) #ACF er rar - seasonal? 
+fit_bic <- auto.arima(boxcox_fit, ic="bic", trace=TRUE, d=1)
+fit_bic # ARIMA(1,1,1) AICC= 736,4
+checkresiduals(fit_bic$residuals, test="FALSE")
+Box.test(fit_bic$residuals, type = "Ljung-Box", lag=10, fitdf = 2)
 
-#Forecast next 30 days - usikker på hvordan vi skal gjøre dette enda
-forecast <- forecast::forecast(arima, h=30)
-inv.forecast <- InvBoxCox(forecast$mean,lambda=0.5)
-inv.upper <- InvBoxCox(forecast$upper, lambda = 0.5)[,2]
-inv.lower <- InvBoxCox(forecast$lower, lambda = 0.5)[,2]
-d=seq(1,30)
-plot(d,inv.forecast, type="o", ylim=range(50,20), xlab="Days after 21.02.2020")
-lines(d,inv.upper,col="red")
-lines(d,inv.lower, col="red")
+fit_aicc <- Arima(boxcox_fit, order=c(2,1,2)) #aicc is inf in auto.arima
+fit_aicc #smallest AICc and BIC #AICC 718,99
+checkresiduals(fit_aicc$residuals, test="FALSE")
+Box.test(fit_aicc$residuals, type = "Ljung-Box", lag=10, fitdf = 4)
 
+fit_2 <- Arima(boxcox_fit, order=c(2,1,0))
+fit_2 #AICC 743,29
+checkresiduals(fit_2$residuals, test="FALSE")
+Box.test(fit_2$residuals, type = "Ljung-Box", lag=10, fitdf = 2)
+
+fit_3 <- Arima(boxcox_fit, order=c(0,1,1))
+fit_3 #736,65
+checkresiduals(fit_3$residuals, test="FALSE")
+Box.test(fit_3$residuals, type = "Ljung-Box", lag=10, fitdf = 1)
+
+fit_4 <- Arima(boxcox_fit, order=c(1,1,2))
+fit_4 #738,52
+checkresiduals(fit_4$residuals, test="FALSE")
+Box.test(fit_4$residuals, type = "Ljung-Box", lag=10, fitdf = 3)
+
+
+#Forecast next 30 days ARIMA(1,1,1)
+forecast <- forecast::forecast(fit_bic, h=30, biasadj=TRUE)
+forecast$mean <- InvBoxCox(forecast$mean,lambda=lambda)
+forecast$upper <- InvBoxCox(forecast$upper, lambda = lambda)
+forecast$lower <- InvBoxCox(forecast$lower, lambda = lambda)
+forecast$x <- tseries
+autoplot(forecast, ylim=range(0,350))
+forecast$mean
+
+forecast$fitted <-InvBoxCox(forecast$fitted,lambda=lambda)
+plot(df$Dato, df$`Nye tilfeller`, type="l", ylab="Number of new cases", xlab="Time")
+lines(df$Dato,forecast$fitted, col="red")
+
+forecast$residuals <- InvBoxCox(forecast$residuals, lambda=lambda)
+plot(df$`Dato`,forecast$residuals, type="l")
 
