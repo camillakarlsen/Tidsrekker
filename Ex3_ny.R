@@ -18,6 +18,7 @@ tseries <- ts(df$`Nye tilfeller`,
               start = c(2020, dayofYear),
               frequency = 365)
 
+
 plot.ts(tseries, ylab="New cases", type="o")
 summary(tseries)
 
@@ -40,6 +41,17 @@ abline(h=mean(transformed), col="red")
 #ACF and PACF of BoxCox transformed data
 acf(boxcox_fit,main="") 
 pacf(boxcox_fit,main="") #AR(1) or AR(2)
+
+acf(transformed,main="") 
+pacf(transformed,main="") #AR(1) or AR(2)
+
+#SEASONAL
+seasonal <- diff(transformed, lag = 7, differences = 1)
+plot.ts(seasonal,type="l")
+abline(h=mean(seasonal), col="red")
+
+acf(seasonal, main="")
+pacf(seasonal, main="")
 
 #Augmented Dickey-Fuller Test
 tseries::adf.test(transformed, k=0) #-> stationary

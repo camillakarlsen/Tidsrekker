@@ -38,7 +38,6 @@ summary(x)
 acf(x, main="ACF") #values are correlated 
 #PACF page 86
 p <- pacf(x)
-?pacf
 
 mu_x = mean(x) # sample mean
 mu_x
