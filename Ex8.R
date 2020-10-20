@@ -4,8 +4,9 @@ library("forecast")
 library("tseries")
 
 #Reading data from excel
-df <- read_xlsx("C:\\Users\\marti\\Documents\\NTNU\\Tidsrekker\\Tidsrekker\\xls_ex8.xlsx",skip=1)
-#df <- read_xlsx("xls_ex8.xlsx",skip=1) #fikk feilmelding på denne
+#setwd("/Users/camillakarlsen/Desktop/Tidsrekker/Tidsrekker")
+df <- read_xlsx("xls_ex8.xlsx",skip=1)[-c(236),] #Fjerner siste rad siden denne ikke er fullstendig
+#df <- read_xlsx("C:\\Users\\marti\\Documents\\NTNU\\Tidsrekker\\Tidsrekker\\xls_ex8.xlsx",skip=1)
 df$Dato <- as.Date(df$Dato, "%d.%m.%Y") 
 
 #Plot the data
@@ -58,7 +59,9 @@ checkresiduals(fit$residuals, test="FALSE")
 Box.test(fit$residuals, type = "Ljung-Box", lag=10, fitdf = 2)
 accuracy(fit)
 
-# Prøver differencing som vi fikk kommentar på at vi burde gjøre
+
+
+# Pr?ver differencing som vi fikk kommentar p? at vi burde gj?re
 transformed.data = diff(boxcox_fit, lag = 7, differences = 1)
 plot.ts(transformed.data,type="l")
 abline(h=mean(transformed.data), col="red")
@@ -69,8 +72,28 @@ fit1
 checkresiduals(fit1$residuals, test="FALSE")
 Box.test(fit$residuals, type = "Ljung-Box", lag=10, fitdf = 2)
 
-?auto.arima
 fit2 = Arima(boxcox_fit, order = c(7,1,7))
 fit2
 checkresiduals(fit2$residuals, test="FALSE")
 Box.test(fit2$residuals, type = "Ljung-Box", lag=10, fitdf = 2)
+
+fit3 = astsa::sarima(boxcox_fit, 2, 1, 2, 2, 1, 2, 7)
+fit3
+
+#Forecast next 14 days 
+forecast <- forecast::forecast(fit, h=14, biasadj=TRUE)
+forecast$mean <- InvBoxCox(forecast$mean,lambda=lambda)
+forecast$upper <- InvBoxCox(forecast$upper, lambda = lambda)
+forecast$lower <- InvBoxCox(forecast$lower, lambda = lambda)
+forecast$upper
+forecast$x <- tseries
+autoplot(forecast)
+forecast$mean
+
+forecast$fitted <-InvBoxCox(forecast$fitted,lambda=lambda)
+plot(df$Dato, df$`Nye tilfeller`, type="l", ylab="Number of new cases", 
+     xlab="Time")
+lines(df$Dato,forecast$fitted, col="red")
+
+forecast$residuals <- InvBoxCox(forecast$residuals, lambda=lambda)
+plot(df$`Dato`,forecast$residuals, type="l")
