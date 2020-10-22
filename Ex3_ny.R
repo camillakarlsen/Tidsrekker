@@ -50,8 +50,8 @@ seasonal <- diff(transformed, lag = 7, differences = 1)
 plot.ts(seasonal,type="l")
 abline(h=mean(seasonal), col="red")
 
-acf(seasonal, main="")
-pacf(seasonal, main="")
+acf(seasonal, main="") #q= 1, Q=1
+pacf(seasonal, main="") #p=1, P=1
 
 #Augmented Dickey-Fuller Test
 tseries::adf.test(transformed, k=0) #-> stationary
@@ -118,3 +118,36 @@ tseriesny <- ts(dfny$`Nye tilfeller`,
               frequency = 365)
 plot(forecast, ylim=range(0,450))
 lines(tseriesny)
+
+
+##NY MODEL
+
+lowest_aicc <- 10000
+for (p in 0:2){
+  for (q in 0:2){
+    for (P in 0:2){
+      for (Q in 0:2){
+        model = Arima(boxcox_fit, order=c(p,1,q), 
+                      seasonal = list(order=c(P,1,Q),period=7),method="ML")
+        AICC = model$aicc
+        if (AICC<lowest_aicc){
+          best_model <- model
+          lowest_aicc <- AICC
+        }
+      }
+    }
+  }
+}
+
+best_model
+
+checkresiduals(best_model$residuals, test="FALSE")
+
+#Forecast next 30 days best_model
+forecast <- forecast::forecast(best_model, h=14, biasadj=TRUE)
+forecast$mean <- InvBoxCox(forecast$mean,lambda=lambda)
+forecast$upper <- InvBoxCox(forecast$upper, lambda = lambda)
+forecast$lower <- InvBoxCox(forecast$lower, lambda = lambda)
+forecast$x <- tseries
+autoplot(forecast, ylim=range(0,350)) 
+#Samme problem her, siste telling presser forecast lengre ned en den skulle vært

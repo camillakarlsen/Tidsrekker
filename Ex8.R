@@ -138,7 +138,7 @@ forecast_new$mean <- InvBoxCox(forecast_new$mean,lambda=lambda_new)
 forecast_new$upper <- InvBoxCox(forecast_new$upper, lambda = lambda_new)
 forecast_new$lower <- InvBoxCox(forecast_new$lower, lambda = lambda_new)
 forecast_new$x <- tseries_new
-autoplot(forecast_new)
+autoplot(forecast_new, ylim=c(0,350))
 
 #Simulating
 ?arima.sim
