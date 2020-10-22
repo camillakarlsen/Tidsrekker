@@ -4,18 +4,18 @@ library("forecast")
 library("tseries")
 library("astsa")
 
-#Reading data from excel
+#Set working direction
 #setwd("/Users/camillakarlsen/Desktop/Tidsrekker/Tidsrekker")
-df <- read_xlsx("xls_ex8.xlsx",skip=1)# [-c(236),] #Fjerne siste rad siden denne ikke er riktig?
-#df <- read_xlsx("C:\\Users\\marti\\Documents\\NTNU\\Tidsrekker\\Tidsrekker\\xls_ex8.xlsx",skip=1)
+#setwd("C:\\Users\\marti\\Documents\\NTNU\\Tidsrekker\\Tidsrekker")
+
+#Reading data from excel
+df <- read_xlsx("xls_ex8.xlsx",skip=1)
 df$Dato <- as.Date(df$Dato, "%d.%m.%Y") 
 
 #Plot the data
-#par(mfrow=c(2,1))
 plot(df$Dato, df$`Kumulativt antall`, type="l", xlab="Date", 
      ylab= "Cumulative cases")
 plot(df$Dato, df$`Nye tilfeller`, type="o", xlab="Date", ylab= "New cases")
-#par(mfrow=c(1,1))
 
 ## Create a time series object
 dayofYear <- (df$Dato[1] - as.Date("2020-01-01") + 1)
@@ -26,18 +26,15 @@ tseries <- ts(df$`Nye tilfeller`,
 plot.ts(tseries, ylab="New cases", type="o")
 summary(tseries)
 
-# ACF, PACF
 acf(tseries, main="")
 pacf(tseries, main="")
 
 # BoxCox transformation
 lambda <- BoxCox.lambda(tseries[1:length(tseries)])
-lambda
 boxcox_fit <- BoxCox(tseries,lambda=lambda) 
 plot.ts(boxcox_fit,type="l")
 abline(h=mean(boxcox_fit), col="red")
 
-# ACF, PACF
 acf(boxcox_fit, main="")
 pacf(boxcox_fit, main="")
 
@@ -62,17 +59,23 @@ abline(h=mean(transformed.seasonal), col="red")
 acf(transformed.seasonal, main="") #q = 1, Q = 1 eller 2 
 pacf(transformed.seasonal, main="") #p = 1, P = 0 tails off
 
-model_from_acf_1 = Arima(boxcox_fit, order=c(1,1,1), seasonal = list(order=c(0,1,1),period=7),method="ML")
+#Fit model according to acf and pacf
+
+model_from_acf_1 = Arima(boxcox_fit, order=c(1,1,1), 
+                         seasonal = list(order=c(0,1,1),period=7),method="ML")
 model_from_acf_1
-model_from_acf_2 = Arima(boxcox_fit, order=c(1,1,1), seasonal = list(order=c(0,1,2),period=7),method="ML")
+model_from_acf_2 = Arima(boxcox_fit, order=c(1,1,1), 
+                         seasonal = list(order=c(0,1,2),period=7),method="ML")
 model_from_acf_2
-#Fit ARIMA model - AICC
+
+#Fit ARIMA model based on lowest AICC
 lowest_aicc <- 10000
 for (p in 0:2){
   for (q in 0:2){
     for (P in 0:2){
       for (Q in 0:2){
-        model = Arima(boxcox_fit, order=c(p,1,q), seasonal = list(order=c(P,1,Q),period=7),method="ML")
+        model = Arima(boxcox_fit, order=c(p,1,q), 
+                      seasonal = list(order=c(P,1,Q),period=7),method="ML")
         AICC = model$aicc
         if (AICC<lowest_aicc){
           best_model <- model
@@ -85,11 +88,10 @@ for (p in 0:2){
 
 best_model #ARIMA(1,1,0)(0,1,2)[7]
 
-
 #Check residuals
 checkresiduals(best_model$residuals, test="FALSE")
-Box.test(best_model$residuals, type = "Ljung-Box", lag= 20, fitdf = 3) #hva skal lag være? 
-Box.test(best_model$residuals, type = "Box-Pierce", lag=10, fitdf = 3)
+Box.test(best_model$residuals, type = "Ljung-Box", lag= 20, fitdf = 3) 
+Box.test(best_model$residuals, type = "Box-Pierce", lag=20, fitdf = 3)
 
 #Forecast next 14 days (blir veldig lav på grunn av siste registrering?)
 forecast <- forecast::forecast(best_model, h=14, biasadj=TRUE)
@@ -115,7 +117,8 @@ for (p in 0:2){
   for (q in 0:2){
     for (P in 0:2){
       for (Q in 0:2){
-        model = Arima(boxcox_fit_new, order=c(p,1,q), seasonal = list(order=c(P,1,Q),period=7),method="ML")
+        model = Arima(boxcox_fit_new, order=c(p,1,q), 
+                      seasonal = list(order=c(P,1,Q),period=7),method="ML")
         AICC = model$aicc
         if (AICC<lowest_aicc){
           best_model_new <- model
@@ -127,6 +130,8 @@ for (p in 0:2){
 }
 
 best_model_new
+
+checkresiduals(best_model_new$residuals, test="FALSE")
 
 forecast_new <- forecast::forecast(best_model_new, h=14, biasadj=TRUE)
 forecast_new$mean <- InvBoxCox(forecast_new$mean,lambda=lambda_new)
