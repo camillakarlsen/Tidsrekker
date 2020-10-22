@@ -11,9 +11,11 @@ df <- read_xlsx("xls_ex8.xlsx",skip=1)# [-c(236),] #Fjerne siste rad siden denne
 df$Dato <- as.Date(df$Dato, "%d.%m.%Y") 
 
 #Plot the data
+#par(mfrow=c(2,1))
 plot(df$Dato, df$`Kumulativt antall`, type="l", xlab="Date", 
      ylab= "Cumulative cases")
 plot(df$Dato, df$`Nye tilfeller`, type="o", xlab="Date", ylab= "New cases")
+#par(mfrow=c(1,1))
 
 ## Create a time series object
 dayofYear <- (df$Dato[1] - as.Date("2020-01-01") + 1)
@@ -53,15 +55,17 @@ tseries::adf.test(transformed, k=0)
 kpss.test(transformed, null="Trend")
 
 # Seasonal differencing
-transformed.data = diff(transformed, lag = 7, differences = 1)
-plot.ts(transformed.data,type="l")
-abline(h=mean(transformed.data), col="red")
+transformed.seasonal = diff(transformed, lag = 7, differences = 1)
+plot.ts(transformed.seasonal,type="l")
+abline(h=mean(transformed.seasonal), col="red")
 
-acf(transformed.data, main="") #q = 1, Q = 1 eller 2 
-pacf(transformed.data, main="") #p = 1, P = 0 tails off
+acf(transformed.seasonal, main="") #q = 1, Q = 1 eller 2 
+pacf(transformed.seasonal, main="") #p = 1, P = 0 tails off
 
-model_from_acf = Arima(boxcox_fit, order=c(1,1,1), seasonal = list(order=c(0,1,2),period=7),method="ML")
-model_from_acf
+model_from_acf_1 = Arima(boxcox_fit, order=c(1,1,1), seasonal = list(order=c(0,1,1),period=7),method="ML")
+model_from_acf_1
+model_from_acf_2 = Arima(boxcox_fit, order=c(1,1,1), seasonal = list(order=c(0,1,2),period=7),method="ML")
+model_from_acf_2
 #Fit ARIMA model - AICC
 lowest_aicc <- 10000
 for (p in 0:2){
@@ -84,16 +88,52 @@ best_model #ARIMA(1,1,0)(0,1,2)[7]
 
 #Check residuals
 checkresiduals(best_model$residuals, test="FALSE")
-Box.test(best_model$residuals, type = "Ljung-Box", lag=20, fitdf = 3) #hva skal lag være? 
+Box.test(best_model$residuals, type = "Ljung-Box", lag= 20, fitdf = 3) #hva skal lag være? 
+Box.test(best_model$residuals, type = "Box-Pierce", lag=10, fitdf = 3)
 
-
-#Forecast next 14 days (blir veldig lav? på grunn av siste registrering?)
+#Forecast next 14 days (blir veldig lav på grunn av siste registrering?)
 forecast <- forecast::forecast(best_model, h=14, biasadj=TRUE)
 forecast$mean <- InvBoxCox(forecast$mean,lambda=lambda)
 forecast$upper <- InvBoxCox(forecast$upper, lambda = lambda)
 forecast$lower <- InvBoxCox(forecast$lower, lambda = lambda)
 forecast$x <- tseries
 autoplot(forecast)
+
+####Remove outlier - new model and forecast
+df_new <- read_xlsx("xls_ex8.xlsx",skip=1)[-c(236),]
+df_new$Dato <- as.Date(df_new$Dato, "%d.%m.%Y") 
+tseries_new <- ts(df_new$`Nye tilfeller`,
+              start = c(2020, dayofYear),
+              frequency = 365)
+lambda_new <- BoxCox.lambda(tseries_new[1:length(tseries_new)])
+boxcox_fit_new <- BoxCox(tseries_new,lambda=lambda_new) 
+transformed_new <- diff(boxcox_fit_new)
+transformed.seasonal_new = diff(transformed_new, lag = 7, differences = 1)
+
+lowest_aicc <- 10000
+for (p in 0:2){
+  for (q in 0:2){
+    for (P in 0:2){
+      for (Q in 0:2){
+        model = Arima(boxcox_fit_new, order=c(p,1,q), seasonal = list(order=c(P,1,Q),period=7),method="ML")
+        AICC = model$aicc
+        if (AICC<lowest_aicc){
+          best_model_new <- model
+          lowest_aicc <- AICC
+        }
+      }
+    }
+  }
+}
+
+best_model_new
+
+forecast_new <- forecast::forecast(best_model_new, h=14, biasadj=TRUE)
+forecast_new$mean <- InvBoxCox(forecast_new$mean,lambda=lambda_new)
+forecast_new$upper <- InvBoxCox(forecast_new$upper, lambda = lambda_new)
+forecast_new$lower <- InvBoxCox(forecast_new$lower, lambda = lambda_new)
+forecast_new$x <- tseries_new
+autoplot(forecast_new)
 
 #Simulating
 ?arima.sim
