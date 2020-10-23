@@ -3,10 +3,12 @@ library("readxl")
 library("forecast")
 library("tseries")
 library("astsa")
+library("sarima")
+library("rugarch")
 
 #Set working direction
 #setwd("/Users/camillakarlsen/Desktop/Tidsrekker/Tidsrekker")
-#setwd("C:\\Users\\marti\\Documents\\NTNU\\Tidsrekker\\Tidsrekker")
+setwd("C:\\Users\\marti\\Documents\\NTNU\\Tidsrekker\\Tidsrekker")
 
 #Reading data from excel
 df <- read_xlsx("xls_ex8.xlsx",skip=1)
@@ -143,6 +145,31 @@ autoplot(forecast_new, ylim=c(0,350))
 #Simulating
 ?arima.sim
 
-#GARCH
+sim = simulate(best_model, nsim = 70)
+plot(sim)
 
+sim1 = sim_sarima(best_model_new, n=70)
+?sim_sarima
+
+??sarima.Sim
+
+??sim.ssarima
+
+#GARCH
+plot(best_model$residuals)
+pacf(best_model$residuals^2) # try garch(1,1)?
+plot(best_model_new$residuals)
+pacf(best_model_new$residuals^2) # try garch(2,2)?
+?ugarchspec
+garchmod = ugarchspec(variance.model = list(model="sGARCH", garchOrder=c(2,2)), 
+                      mean.model = list(armaOrder=c(0,0),include.mean=TRUE))
+
+garch = ugarchfit(spec = garchmod, data=best_model_new$residuals,solver.control = list(trace=0))
+garch # => garch(1,0)?
+
+garchmod1 = ugarchspec(variance.model = list(model="sGARCH", garchOrder=c(1,0)), 
+                      mean.model = list(armaOrder=c(0,0),include.mean=TRUE))
+
+garch1 = ugarchfit(spec = garchmod1, data=best_model_new$residuals,solver.control = list(trace=0))
+garch1
 
