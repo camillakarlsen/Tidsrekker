@@ -104,7 +104,7 @@ forecast$x <- tseries
 autoplot(forecast)
 
 ####Remove outlier - new model and forecast
-# siden det kan ta litt tid å få prøvesvar tror jeg de to siste verdiene
+# siden det kan ta litt tid ï¿½ fï¿½ prï¿½vesvar tror jeg de to siste verdiene
 # kan vore ganske usikre
 # har sammenliknet verdier for de siste dagene og antall tilfeller den
 # 12.10 er endret fra 108 til 165 og
@@ -149,6 +149,51 @@ forecast_new$upper <- InvBoxCox(forecast_new$upper, lambda = lambda_new)
 forecast_new$lower <- InvBoxCox(forecast_new$lower, lambda = lambda_new)
 forecast_new$x <- tseries_new
 autoplot(forecast_new, ylim=c(0,350))
+
+# Update last two values
+df_updated <- read_xlsx("xls_ex8_updated.xlsx",skip=1)
+df_updated$Dato <- as.Date(df_updated$Dato, "%d.%m.%Y") 
+df_updated$`Nye tilfeller`
+tseries_updated <- ts(df_updated$`Nye tilfeller`,
+                  start = c(2020, dayofYear),
+                  frequency = 365)
+tseries_updated
+lambda_updated <- BoxCox.lambda(tseries_updated[1:length(tseries_updated)])
+lambda_updated
+boxcox_fit_updated <- BoxCox(tseries_updated,lambda=lambda_updated) 
+boxcox_fit_updated
+plot.ts(boxcox_fit_updated)
+transformed_updated <- diff(boxcox_fit_updated)
+transformed.seasonal_updated = diff(transformed_updated, lag = 7, differences = 1)
+
+lowest_aicc <- 10000
+for (p in 0:2){
+  for (q in 0:2){
+    for (P in 0:2){
+      for (Q in 0:2){
+        model = Arima(boxcox_fit_updated, order=c(p,1,q), 
+                      seasonal = list(order=c(P,1,Q),period=7),method="ML")
+        AICC = model$aicc
+        if (AICC<lowest_aicc){
+          best_model_updated <- model
+          lowest_aicc <- AICC
+        }
+      }
+    }
+  }
+}
+
+best_model_updated
+
+checkresiduals(best_model_updated$residuals, test="FALSE")
+
+forecast_updated <- forecast::forecast(best_model_updated, h=14, biasadj=TRUE)
+forecast_updated$mean <- InvBoxCox(forecast_updated$mean,lambda=lambda_updated)
+forecast_updated$upper <- InvBoxCox(forecast_updated$upper, lambda = lambda_updated)
+forecast_updated$lower <- InvBoxCox(forecast_updated$lower, lambda = lambda_updated)
+forecast_updated$x <- tseries_updated
+autoplot(forecast_updated, ylim=c(0,350))
+
 
 #Simulating
 ?arima.sim
