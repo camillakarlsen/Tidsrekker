@@ -172,4 +172,20 @@ garchmod1 = ugarchspec(variance.model = list(model="sGARCH", garchOrder=c(1,0)),
 
 garch1 = ugarchfit(spec = garchmod1, data=best_model_new$residuals,solver.control = list(trace=0))
 garch1
+infocriteria(garch1)[1]
+
+aic = 10000
+for (p in 0:2) {
+  for (q in 0:2) {
+    garchmod = ugarchspec(variance.model = list(model="sGARCH", garchOrder=c(p,q)), 
+                          mean.model = list(armaOrder=c(0,0),include.mean=TRUE))
+    fit = ugarchfit(spec = garchmod1, data=best_model_new$residuals,solver.control = list(trace=0))
+    ic = infocriteria(fit)[1]
+    if (ic<aic){
+      best.garch = fit
+      aic = ic
+    }
+  }
+}
+best.garch #GARCH(1,0)
 
