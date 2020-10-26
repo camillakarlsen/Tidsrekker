@@ -104,8 +104,16 @@ forecast$x <- tseries
 autoplot(forecast)
 
 ####Remove outlier - new model and forecast
+# siden det kan ta litt tid å få prøvesvar tror jeg de to siste verdiene
+# kan vore ganske usikre
+# har sammenliknet verdier for de siste dagene og antall tilfeller den
+# 12.10 er endret fra 108 til 165 og
+# 13.10 er endret fra 11 til 155
+# tenker derfor vi kanskje kan fjerne begge disse eller evt oppdatere tallene?
+
 df_new <- read_xlsx("xls_ex8.xlsx",skip=1)[-c(236),]
 df_new$Dato <- as.Date(df_new$Dato, "%d.%m.%Y") 
+df_new$`Nye tilfeller`
 tseries_new <- ts(df_new$`Nye tilfeller`,
               start = c(2020, dayofYear),
               frequency = 365)
