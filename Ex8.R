@@ -91,11 +91,29 @@ forecast$x <- tseries
 autoplot(forecast, ylim=c(0,350))
 
 
-#Simulating (har ikke fått denne til å funke enda)
+#Simulating 
+#Define Sarimamodel
 SarimaModel = list(ar=-0.43, sma = c(-0.84, -0.16), 
                    iorder=1,siorder=1,nseasons=7, sigma2=1.2)
-sim = sim_sarima(n=16, model = SarimaModel, x=transformed.seasonal, 
-                 xintercept = best_model$residuals)
+
+#Kun test da jeg ikke har fått koden til å funke helt 
+#- simulerer negative verdier og mye mindre verier enn ønsket
+# er det noen parametre som burde endres? 
+sim_test = sim_sarima(n=14, model = SarimaModel, x=tseries,
+                 n.start=length(tseries), eps = best_model$residuals)
+
+#Simulate five corresponding two week realizations 
+sim_function <- prepareSimSarima(n=14, model = SarimaModel, x=tseries, 
+                  n.start=length(tseries), eps = best_model$residuals)
+
+firstday <- df$Dato[length(tseries)] + 1 - as.Date("2020-01-01") + 1
+
+plot(forecast, ylim=c(0,400))
+for (i in 1:5){ #obs har abs rundt simuleringen nå for å få positive verdier
+  lines(ts(abs(sim_function()), start = c(2020, firstday), frequency = 365), 
+        type="l", col="red")
+}
+
 
 #GARCH
 plot(best_model$residuals)
