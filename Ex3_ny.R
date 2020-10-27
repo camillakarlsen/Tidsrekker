@@ -28,7 +28,7 @@ acf(tseries, main="") #values are correlated
 #Transforming the time series
 ##Box-Cox
 lambda <- BoxCox.lambda(tseries[1:196])
-boxcox_fit <- BoxCox(tseries,lambda=lambda) 
+boxcox_fit <- forecast::BoxCox(tseries,lambda=lambda) 
 plot.ts(boxcox_fit,type="l")
 abline(h=mean(boxcox_fit), col="red")
 
