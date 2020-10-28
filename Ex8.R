@@ -8,8 +8,8 @@ library("rugarch")
 library("dplyr")
 
 #Set working direction
-#setwd("/Users/camillakarlsen/Desktop/Tidsrekker/Tidsrekker")
-setwd("C:\\Users\\marti\\Documents\\NTNU\\Tidsrekker\\Tidsrekker")
+setwd("/Users/camillakarlsen/Desktop/Tidsrekker/Tidsrekker")
+#setwd("C:\\Users\\marti\\Documents\\NTNU\\Tidsrekker\\Tidsrekker")
 
 #Reading data from excel
 df <- read_xlsx("xls_ex8_updated.xlsx",skip=1)
@@ -37,10 +37,9 @@ boxcox_fit <- forecast::BoxCox(tseries,lambda=lambda)
 plot.ts(boxcox_fit)
 abline(h=mean(boxcox_fit), col="red")
 
-acf(boxcox_fit, main="")
-pacf(boxcox_fit, main="")
-
 transformed <- diff(boxcox_fit)
+plot.ts(transformed)
+abline(h=mean(transformed), col="red")
 
 acf(transformed, main="")
 pacf(transformed, main="")
@@ -49,18 +48,14 @@ transformed.seasonal = diff(transformed, lag = 7, differences = 1)
 plot.ts(transformed.seasonal,type="l")
 abline(h=mean(transformed.seasonal), col="red")
 
-acf(transformed.seasonal, main="") #q = 1, Q = 1 eller 2 
+acf(transformed.seasonal, main="") #q = 1, Q = 1 
 pacf(transformed.seasonal, main="") #p = 1, P = 0 tails off
 
 #Fit model according to acf and pacf
 
-model_from_acf_1 = Arima(boxcox_fit, order=c(1,1,1), 
+model_from_acf = Arima(boxcox_fit, order=c(1,1,1), 
                          seasonal = list(order=c(0,1,1),period=7),method="ML")
-model_from_acf_1
-model_from_acf_2 = Arima(boxcox_fit, order=c(1,1,1), 
-                         seasonal = list(order=c(0,1,2),period=7),method="ML")
-model_from_acf_2
-
+model_from_acf
 
 lowest_aicc <- 10000
 for (p in 0:2){
@@ -122,22 +117,26 @@ pacf(best_model$residuals^2) # try garch(1,1)?
 garchmod = ugarchspec(variance.model = list(model="sGARCH", garchOrder=c(2,2)), 
                       mean.model = list(armaOrder=c(0,0),include.mean=TRUE))
 
-garch = ugarchfit(spec = garchmod, data=best_model$residuals,solver.control = list(trace=0))
+garch = ugarchfit(spec = garchmod, data=best_model$residuals,
+                  solver.control = list(trace=0))
 garch # => garch(1,0)?
 
 garchmod1 = ugarchspec(variance.model = list(model="sGARCH", garchOrder=c(1,0)), 
                       mean.model = list(armaOrder=c(0,0),include.mean=TRUE))
 
-garch1 = ugarchfit(spec = garchmod1, data=best_model$residuals,solver.control = list(trace=0))
+garch1 = ugarchfit(spec = garchmod1, data=best_model$residuals,
+                   solver.control = list(trace=0))
 garch1
 infocriteria(garch1)[1]
 
 aic = 10000
 for (p in 0:1) {
   for (q in 0:1) {
-    garchmod = ugarchspec(variance.model = list(model="sGARCH", garchOrder=c(p,q)), 
+    garchmod = ugarchspec(variance.model = 
+                            list(model="sGARCH", garchOrder=c(p,q)), 
                           mean.model = list(armaOrder=c(0,0),include.mean=TRUE))
-    fit = ugarchfit(spec = garchmod, data=best_model$residuals,solver.control = list(trace=0))
+    fit = ugarchfit(spec = garchmod, data=best_model$residuals,
+                    solver.control = list(trace=0))
     ic = infocriteria(fit)[1]
     if (ic<aic){
       best.garch = fit
