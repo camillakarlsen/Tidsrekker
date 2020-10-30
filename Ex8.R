@@ -128,7 +128,7 @@ for (i in 1:5){
 
 #GARCH
 plot(best_model$residuals)
-pacf(best_model$residuals^2) # try garch(1,1)?
+pacf(best_model$residuals^2, main = "") # try garch(1,1)?
 
 #best_model
 
@@ -177,3 +177,4 @@ best.garch
 j = 3
 aicc = infocriteria(best.garch)[1] + 2*j*(j+1)/(n*(n-j-1))
 aicc
+
