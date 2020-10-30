@@ -131,7 +131,7 @@ for (p in 0:2){
                       seasonal = list(order=c(P,1,Q),period=7),method="ML")
         AICC = model$aicc
         if (AICC<lowest_aicc){
-          best_model <- model
+          best_model_3 <- model
           lowest_aicc <- AICC
         }
       }
@@ -139,12 +139,13 @@ for (p in 0:2){
   }
 }
 
-best_model
+best_model_3
+saveRDS(best_model_3, "model_3.rds")
 
-checkresiduals(best_model$residuals, test="FALSE")
+checkresiduals(best_model_3$residuals, test="FALSE")
 
 #Forecast next 30 days best_model
-forecast <- forecast::forecast(best_model, h=14, biasadj=TRUE)
+forecast <- forecast::forecast(best_model_3, h=14, biasadj=TRUE)
 forecast$mean <- InvBoxCox(forecast$mean,lambda=lambda)
 forecast$upper <- InvBoxCox(forecast$upper, lambda = lambda)
 forecast$lower <- InvBoxCox(forecast$lower, lambda = lambda)
