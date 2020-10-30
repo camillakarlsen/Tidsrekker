@@ -7,9 +7,9 @@ library("sarima")
 library("rugarch")
 library("dplyr")
 
-#Set working direction
-setwd("/Users/camillakarlsen/Desktop/Tidsrekker/Tidsrekker")
-#setwd("C:\\Users\\marti\\Documents\\NTNU\\Tidsrekker\\Tidsrekker")
+#Set working directory
+#setwd("/Users/camillakarlsen/Desktop/Tidsrekker/Tidsrekker")
+setwd("C:\\Users\\marti\\Documents\\NTNU\\Tidsrekker\\Tidsrekker")
 
 #Reading data from excel
 df <- read_xlsx("xls_ex8_updated.xlsx",skip=1)
@@ -114,35 +114,50 @@ for (i in 1:5){ #obs har abs rundt simuleringen nå for å få positive verdier
 plot(best_model$residuals)
 pacf(best_model$residuals^2) # try garch(1,1)?
 
-garchmod = ugarchspec(variance.model = list(model="sGARCH", garchOrder=c(2,2)), 
-                      mean.model = list(armaOrder=c(0,0),include.mean=TRUE))
+#best_model
 
-garch = ugarchfit(spec = garchmod, data=best_model$residuals,
-                  solver.control = list(trace=0))
-garch # => garch(1,0)?
+lnames <- c(paste0("ar", which(sapply(best_model$model$phi, function(th) {
+  isTRUE(all.equal(th, 0))
+}))), paste0("ma", which(sapply(best_model$model$theta, function(th) {
+  isTRUE(all.equal(th, 0))
+}))))
+constraints <- rep(list(0), length(lnames))
+names(constraints) <- lnames
+order <- c(length(best_model$model$phi), length(best_model$model$theta))
 
-garchmod1 = ugarchspec(variance.model = list(model="sGARCH", garchOrder=c(1,0)), 
-                      mean.model = list(armaOrder=c(0,0),include.mean=TRUE))
 
-garch1 = ugarchfit(spec = garchmod1, data=best_model$residuals,
-                   solver.control = list(trace=0))
-garch1
-infocriteria(garch1)[1]
+#model <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1,1)), 
+#                    mean.model = list(armaOrder = order, include.mean = TRUE), 
+#                    distribution.model = "std", fixed.pars = constraints)
 
-aic = 10000
+#garchmodel = ugarchfit(spec = model, data = transformed.seasonal)
+#garchmodel@fit$LLH
+#j = 7 +1
+#a = 2*(j-garchmodel@fit$LLH)/length(transformed.seasonal)
+#a
+#garchmodel
+
+lowest.aicc = 10000
 for (p in 0:1) {
   for (q in 0:1) {
-    garchmod = ugarchspec(variance.model = 
-                            list(model="sGARCH", garchOrder=c(p,q)), 
-                          mean.model = list(armaOrder=c(0,0),include.mean=TRUE))
-    fit = ugarchfit(spec = garchmod, data=best_model$residuals,
-                    solver.control = list(trace=0))
-    ic = infocriteria(fit)[1]
-    if (ic<aic){
-      best.garch = fit
-      aic = ic
+    if (p>0 | q>0) {
+      garchmod = ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(p,q)), 
+                            mean.model = list(armaOrder = order, include.mean = TRUE), 
+                            distribution.model = "std", fixed.pars = constraints)
+      fit = ugarchfit(spec = garchmod, data = transformed.seasonal)
+      
+      j = p + q + 1.0
+      n = length(transformed.seasonal)
+      aicc = infocriteria(fit)[1] + 2*j*(j+1)/(n*(n-j-1))
+      if (aicc<lowest.aicc){
+        best.garch = fit
+        lowest.aicc = aicc
+      }
     }
   }
 }
-best.garch #GARCH(1,0)
 
+best.garch 
+j = 3
+aicc = infocriteria(best.garch)[1] + 2*j*(j+1)/(n*(n-j-1))
+aicc
