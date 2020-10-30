@@ -57,6 +57,7 @@ model_from_acf = Arima(boxcox_fit, order=c(1,1,1),
                          seasonal = list(order=c(0,1,1),period=7),method="ML")
 model_from_acf
 
+#Fit model according to AICc
 lowest_aicc <- 10000
 for (p in 0:2){
   for (q in 0:2){
@@ -83,30 +84,45 @@ forecast$mean <- InvBoxCox(forecast$mean,lambda=lambda)
 forecast$upper <- InvBoxCox(forecast$upper, lambda = lambda)
 forecast$lower <- InvBoxCox(forecast$lower, lambda = lambda)
 forecast$x <- tseries
-autoplot(forecast, ylim=c(0,350))
+autoplot(forecast, ylim=c(0,600))
 
+summary(forecast)
+
+#sarima.for(tseries, 14, p=1, d=1, q=0, P=0, D=1, Q=2, S=7, plot.all = TRUE)
 
 #Simulating 
-#Define Sarimamodel
-SarimaModel = list(ar=-0.43, sma = c(-0.84, -0.16), 
+
+##Definerer Sarimamodel
+SarimaModel = list(ar=best_model$coef[1], sma = best_model$coef[2:3], 
                    iorder=1,siorder=1,nseasons=7, sigma2=1.2)
 
-#Kun test da jeg ikke har fått koden til å funke helt 
-#- simulerer negative verdier og mye mindre verier enn ønsket
-# er det noen parametre som burde endres? 
-sim_test = sim_sarima(n=14, model = SarimaModel, x=tseries,
-                 n.start=length(tseries), eps = best_model$residuals)
+##Loading the best model from exercise 3
+best_model_3 <- readRDS("model_3.rds")
+
+SarimaModel_3 = list(ar=best_model_3$coef[1], sma = best_model_3$coef[2:3], 
+                   iorder=1,siorder=1,nseasons=7, sigma2=1.5)
 
 #Simulate five corresponding two week realizations 
-sim_function <- prepareSimSarima(n=14, model = SarimaModel, x=tseries, 
-                  n.start=length(tseries), eps = best_model$residuals)
+#Mulig det er noe feil i denne funksjonen 
+#Burde vel egentlig ha transformert dataene tilbake også om vi bruker 
+#boxcox_fit som start verdier? Har du noen tanker om hva som kan være feil? 
+sim_function <- prepareSimSarima(n=14, model = SarimaModel, x=list(before=boxcox_fit), 
+                                 n.start=length(tseries))
 
+sim_function_3 <- prepareSimSarima(n=14, model = SarimaModel_3, x=list(before=boxcox_fit), 
+                                   n.start=length(tseries))
+
+#Defining the first day in the simulation
 firstday <- df$Dato[length(tseries)] + 1 - as.Date("2020-01-01") + 1
 
-plot(forecast, ylim=c(0,400))
-for (i in 1:5){ #obs har abs rundt simuleringen nå for å få positive verdier
-  lines(ts(abs(sim_function()), start = c(2020, firstday), frequency = 365), 
+#Plot forecast and simulation 
+
+plot(forecast, ylim=c(0,400), xlim=c(2020.7, 2020.822))
+for (i in 1:5){ 
+  lines(ts(sim_function(), start = c(2020, firstday), frequency = 365), 
         type="l", col="red")
+  lines(ts(sim_function_3(), start = c(2020, firstday), frequency = 365), 
+        type="l", col="green")
 }
 
 
