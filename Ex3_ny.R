@@ -140,7 +140,11 @@ for (p in 0:2){
 }
 
 best_model_3
+model2 = Arima(boxcox_fit, order=c(1,1,1), 
+              seasonal = list(order=c(0,1,1),period=7),method="ML")
+
 saveRDS(best_model_3, "model_3.rds")
+saveRDS(lambda, "lambda_3.rds")
 
 checkresiduals(best_model_3$residuals, test="FALSE")
 
@@ -151,4 +155,3 @@ forecast$upper <- InvBoxCox(forecast$upper, lambda = lambda)
 forecast$lower <- InvBoxCox(forecast$lower, lambda = lambda)
 forecast$x <- tseries
 autoplot(forecast, ylim=range(0,350)) 
-#Samme problem her, siste telling presser forecast lengre ned en den skulle vært

@@ -92,6 +92,55 @@ summary(forecast)
 
 #Simulating 
 
+
+#DENNE SER UT TIL Å VÆRE RIKTIG  - ny model 
+plot(forecast, ylim=c(0,700), xlim=c(2020.76, 2020.822))
+for (i in 1:5){ 
+  lines(InvBoxCox(simulate(best_model, 14), lambda = lambda), 
+        type="l", col="red")
+}
+
+#Med gammel model - ikke riktig 
+# Skal vi forecaste 03.09 eller fra 13.10? 
+# Skal vi bruke estimert model fra øving 3 eller skal vi tilpasse en til de nye dataene men med p,q,P,Q som fra øving 3? 
+
+Model3 <- Arima(boxcox_fit, order=c(1,1,1), 
+                seasonal = list(order=c(0,1,1),period=7),method="ML")
+
+Model3 <- Arima(boxcox_fit, order=c(1,1,1))
+
+forecast2 <- forecast::forecast(Model3, h=14, biasadj=TRUE)
+forecast2$mean <- InvBoxCox(forecast2$mean,lambda=lambda)
+forecast2$upper <- InvBoxCox(forecast2$upper, lambda = lambda)
+forecast2$lower <- InvBoxCox(forecast2$lower, lambda = lambda)
+forecast2$x <- tseries
+
+plot(forecast2, ylim=c(0,600), xlim=c(2020.76, 2020.822))
+for (i in 1:5){ 
+  lines(InvBoxCox(simulate(Model3, 14), lambda = lambda), 
+        type="l", col="red")
+}
+
+##Loading the best model and lambda from exercise 3
+best_model_3 <- readRDS("model_3.rds")
+lambda_3 <- readRDS("lambda_3.rds")
+
+forecast_3 <- forecast::forecast(best_model_3, h=54, biasadj=TRUE)
+forecast_3$mean <- InvBoxCox(forecast_3$mean,lambda=lambda_3)
+forecast_3$upper <- InvBoxCox(forecast_3$upper, lambda = lambda_3)
+forecast_3$lower <- InvBoxCox(forecast_3$lower, lambda = lambda_3)
+forecast_3$x <- ts(tseries[1:length(forecast_3$x)], start = c(2020, dayofYear), frequency = 365)
+autoplot(forecast_3, ylim=c(0,600))
+
+
+plot(forecast_3, ylim=c(0,700), xlim=c(2020.66, 2020.822))
+for (i in 1:5){ 
+  lines(InvBoxCox(simulate(best_model_3, 54), lambda = lambda_3), 
+        type="l", col="red")
+  lines(tseries)
+}
+
+'''
 ##Definerer Sarimamodel
 SarimaModel = list(ar=best_model$coef[1], sma = best_model$coef[2:3], 
                    iorder=1,siorder=1,nseasons=7, sigma2=1.2)
@@ -102,8 +151,12 @@ best_model_3 <- readRDS("model_3.rds")
 SarimaModel_3 = list(ar=best_model_3$coef[1], sma = best_model_3$coef[2:3], 
                    iorder=1,siorder=1,nseasons=7, sigma2=1.5)
 
+SarimaModel_3
+
 #Simulate five corresponding two week realizations 
-#Mulig det er noe feil i denne funksjonen 
+
+
+Mulig det er noe feil i denne funksjonen 
 #Burde vel egentlig ha transformert dataene tilbake også om vi bruker 
 #boxcox_fit som start verdier? Har du noen tanker om hva som kan være feil? 
 sim_function <- prepareSimSarima(n=14, model = SarimaModel, x=list(before=boxcox_fit), 
@@ -124,14 +177,15 @@ for (i in 1:5){
   lines(ts(sim_function_3(), start = c(2020, firstday), frequency = 365), 
         type="l", col="green")
 }
-
+'''
 
 #GARCH
 plot(best_model$residuals)
+acf(abs(best_model$residuals))
+acf(best_model$residuals^2)
 pacf(best_model$residuals^2, main = "") # try garch(1,1)?
 
 #best_model
-
 lnames <- c(paste0("ar", which(sapply(best_model$model$phi, function(th) {
   isTRUE(all.equal(th, 0))
 }))), paste0("ma", which(sapply(best_model$model$theta, function(th) {
@@ -154,7 +208,7 @@ order <- c(length(best_model$model$phi), length(best_model$model$theta))
 #garchmodel
 
 lowest.aicc = 10000
-for (p in 0:1) {
+for (p in 0:4) {
   for (q in 0:1) {
     if (p>0 | q>0) {
       garchmod = ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(p,q)), 
@@ -174,6 +228,7 @@ for (p in 0:1) {
 }
 
 best.garch 
+
 j = 3
 aicc = infocriteria(best.garch)[1] + 2*j*(j+1)/(n*(n-j-1))
 aicc
