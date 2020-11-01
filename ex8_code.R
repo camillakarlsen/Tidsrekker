@@ -99,9 +99,6 @@ for (i in 1:5){
 }
 
 # model from ex3
-Model3 <- Arima(boxcox_fit, order=c(1,1,1), 
-                seasonal = list(order=c(0,1,1),period=7),method="ML")
-
 Model3 <- Arima(boxcox_fit, order=c(1,1,1))
 
 forecast2 <- forecast::forecast(Model3, h=14, biasadj=TRUE)
@@ -138,9 +135,12 @@ lowest.aicc = 10000
 for (p in 0:4) {
   for (q in 0:1) {
     if (p>0 | q>0) {
-      garchmod = ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(p,q)), 
-                            mean.model = list(armaOrder = order, include.mean = TRUE), 
-                            distribution.model = "std", fixed.pars = constraints)
+      garchmod = ugarchspec(variance.model = list(model = "sGARCH", 
+                                                  garchOrder = c(p,q)), 
+                            mean.model = list(armaOrder = order, 
+                                              include.mean = TRUE), 
+                            distribution.model = "std", 
+                            fixed.pars = constraints)
       fit = ugarchfit(spec = garchmod, data = transformed.seasonal)
       
       j = p + q + 1.0
